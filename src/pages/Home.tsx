@@ -3,6 +3,7 @@ import { Button } from '../components/Button'
 import { Text } from '../components/Text'
 import { Input } from '../components/Input'
 import { Container } from '../components/Container'
+import { Products } from '../components/Products'
 
 export default class Home extends Component {
   render() {
@@ -31,6 +32,7 @@ export default class Home extends Component {
           <div className="mt-4 space-x-4">
             <Button color="secondary" size="large" title="Удалить" />
           </div>
+          <Products />
         </Container>
       </div>
     )
