@@ -12,32 +12,59 @@ type Product = {
 };
 
 export const Products = () => {
-  const [products, setProducts] = useState<Product[]>([
-    { id: 1, title: "Пример товара", description: "Это пример описания", price: "5000" }
-  ]);
-
+  const [products, setProducts] = useState<Product[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
   const [newProduct, setNewProduct] = useState<Omit<Product, 'id'>>({
     title: "",
     description: "",
     price: ""
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/data');
+        if (!response.ok) throw new Error('Ошибка загрузки');
+        const data = await response.json();
+        setProducts(data);
+      } catch (err) {
+        setError(err.message);
+      }
+    };
+    fetchProducts();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setNewProduct(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setNewProduct(prev => ({ ...prev, [name]: value }));
   };
 
-  const addProduct = () => {
-    if (newProduct.title && newProduct.description && newProduct.price) {
-      const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-      setProducts([...products, { ...newProduct, id: newId }]);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch('http://localhost:5000/api/data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newProduct)
+      });
+
+      if (!response.ok) throw new Error('Ошибка сохранения');
+
+      const savedProduct = await response.json();
+      setProducts([...products, savedProduct]);
       setNewProduct({ title: "", description: "", price: "" });
       setIsModalOpen(false);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -51,76 +78,80 @@ export const Products = () => {
         <Text color="primary" size="large">
           Управление товарами
         </Text>
-        
-        {/* Кнопка добавления нового товара */}
-        <div className="mt-4">
-          <Button 
-            color="primary" 
-            size="large" 
-            title="Добавить товар" 
-            onClick={() => setIsModalOpen(true)}
-          />
-        </div>
 
-        {/* Модалка */}
+        <Button 
+          color="primary" 
+          size="large" 
+          title="Добавить товар" 
+          onClick={() => setIsModalOpen(true)}
+        />
+
+        {error && <div className="text-red-500 mt-2">{error}</div>}
+
+        {/* Модальное окно добавления товара */}
         {isModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded-lg w-96">
-              <h2 className="text-xl font-bold mb-4">Добавить новый товар</h2>
+              <h2 className="text-xl font-bold mb-4">Новый товар</h2>
               
-              <div className="mb-4">
-                <label className="block mb-2">Название</label>
-                <Input
-                  type="text"
-                  name="title"
-                  value={newProduct.title}
-                  onChange={handleInputChange}
-                  placeholder="Введите название"
-                  color="primary"
-                  size="medium"
-                />
-              </div>
+              <form onSubmit={handleSubmit}>
+                <div className="mb-4">
+                  <label className="block mb-2">Название</label>
+                  <Input
+                    type="text"
+                    name="title"
+                    value={newProduct.title}
+                    onChange={handleInputChange}
+                    required
+                    color="primary"
+                    size="medium"
+                  />
+                </div>
 
-              <div className="mb-4">
-                <label className="block mb-2">Описание</label>
-                <Input
-                  type="text"
-                  name="description"
-                  value={newProduct.description}
-                  onChange={handleInputChange}
-                  placeholder="Введите описание"
-                  color="primary"
-                  size="medium"
-                />
-              </div>
+                <div className="mb-4">
+                  <label className="block mb-2">Описание</label>
+                  <Input
+                    type="text"
+                    name="description"
+                    value={newProduct.description}
+                    onChange={handleInputChange}
+                    required
+                    color="primary"
+                    size="medium"
+                  />
+                </div>
 
-              <div className="mb-4">
-                <label className="block mb-2">Цена</label>
-                <Input
-                  type="text"
-                  name="price"
-                  value={newProduct.price}
-                  onChange={handleInputChange}
-                  placeholder="Введите цену"
-                  color="primary"
-                  size="medium"
-                />
-              </div>
+                <div className="mb-4">
+                  <label className="block mb-2">Цена</label>
+                  <Input
+                    type="text"
+                    name="price"
+                    value={newProduct.price}
+                    onChange={handleInputChange}
+                    required
+                    color="primary"
+                    size="medium"
+                  />
+                </div>
 
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  color="secondary" 
-                  size="medium" 
-                  title="Отмена" 
-                  onClick={() => setIsModalOpen(false)}
-                />
-                <Button 
-                  color="primary" 
-                  size="medium" 
-                  title="Добавить" 
-                  onClick={addProduct}
-                />
-              </div>
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    type="button"
+                    color="secondary" 
+                    size="medium" 
+                    title="Отмена" 
+                    onClick={() => setIsModalOpen(false)}
+                    disabled={isLoading}
+                  />
+                  <Button 
+                    type="submit"
+                    color="primary" 
+                    size="medium" 
+                    title={isLoading ? "Сохранение..." : "Сохранить"} 
+                    disabled={isLoading}
+                  />
+                </div>
+              </form>
             </div>
           </div>
         )}
@@ -133,31 +164,23 @@ export const Products = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {products.map(product => (
-                <div key={product.id} className="relative">
-                    <ProductCard key={product.id} product={product} />
-                    <Button
+                <div key={product.id} className="relative group bg-white p-4 rounded-lg shadow">
+                  <h3 className="text-lg font-bold">{product.title}</h3>
+                  <p className="text-gray-600 mt-1">{product.description}</p>
+                  <p className="text-amber-700 font-bold mt-2">{product.price} ₽</p>
+                  <Button
                     color="secondary"
                     size="small"
                     title="Удалить"
                     onClick={() => deleteProduct(product.id)}
                     className="absolute top-2 right-2"
                   />
-                  </div>
+                </div>
               ))}
             </div>
           )}
         </div>
       </div>
     </Container>
-  );
-};
-
-const ProductCard: React.FC<{ product: Product }> = ({ product }) => {
-  return (
-    <div className="bg-white p-4 rounded-lg shadow-md">
-      <h3 className="text-lg font-bold mb-2">{product.title}</h3>
-      <p className="text-gray-600 mb-2">{product.description}</p>
-      <p className="text-amber-700 font-bold">{product.price} ₽</p>
-    </div>
   );
 };
